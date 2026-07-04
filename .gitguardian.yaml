@@ -1,0 +1,10 @@
+version: 2
+
+# These are intentional configuration TEMPLATES with empty placeholder values
+# (e.g. `SMTP_PASSWORD=` with nothing after it) — not real credentials.
+# Ignoring them prevents false-positive secret incidents. Real secrets live only
+# in platform secret managers (Render / Vercel / Supabase), never in the repo.
+paths-ignore:
+  - "**/.env.example"
+  - "**/.env.sample"
+  - "**/ENV.sample"
