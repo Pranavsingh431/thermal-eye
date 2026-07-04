@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --brand: 221 83% 53%;      /* default brand blue; overridden per-org at runtime */
+  --brand-fg: 0 0% 100%;
+  --accent: 24 95% 53%;
+  --font-sans: "Inter", system-ui, sans-serif;
+}
+
+* { border-color: rgb(229 231 235); }
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+.dark body {
+  @apply bg-gray-950 text-gray-100;
+}
+
+@layer components {
+  .card {
+    @apply rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold
+           transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50
+           disabled:pointer-events-none;
+  }
+  .btn-brand { @apply btn bg-brand text-brand-fg hover:opacity-90 focus:ring-brand; }
+  .btn-ghost { @apply btn text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-800; }
+  .btn-outline { @apply btn border border-gray-300 bg-white hover:bg-gray-50 dark:border-gray-700 dark:bg-gray-900 dark:hover:bg-gray-800; }
+  .input {
+    @apply w-full rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-sm shadow-sm
+           placeholder:text-gray-400 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30
+           dark:border-gray-700 dark:bg-gray-900;
+  }
+  .label { @apply mb-1.5 block text-sm font-medium text-gray-700 dark:text-gray-300; }
+  .badge { @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold; }
+}

@@ -1,0 +1,168 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+.yarn-integrity
+
+# Next.js / Vercel (apps/web)
+apps/web/.next/
+apps/web/out/
+apps/web/build/
+.vercel/
+next-env.d.ts
+
+# Python packaging (apps/api)
+apps/api/.venv/
+.ruff_cache/
+.mypy_cache/
+
+# React build
+frontend/build/
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Environment variables — catch EVERY env file, allow only examples
+.env
+.env.*
+*.env
+!*.env.example
+!.env.example
+!.env.sample
+!ENV.sample
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+logs/
+*.log
+*.log.*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+temp/
+tmp/
+
+# Images (except sample/demo images)
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.bmp
+*.tiff
+!demo_images/
+!docs/images/
+
+# PDFs (generated reports)
+*.pdf
+!docs/*.pdf
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Docker
+.dockerignore
+
+# Certificates
+*.pem
+*.key
+*.crt
+*.cert
+
+# Local development
+.local/
+
+# Testing
+.coverage
+coverage/
+.nyc_output/
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# Kubernetes
+*.kubeconfig
+
+# Secrets
+secrets/
+*.secret

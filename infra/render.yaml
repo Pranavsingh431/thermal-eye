@@ -1,0 +1,51 @@
+# Render Blueprint for the ThermalEye API.
+# In Render: New + → Blueprint → point at this repo. Set the sync:false secrets in the
+# dashboard (or via the Supabase/OpenRouter values). Root dir is apps/api.
+services:
+  - type: web
+    name: thermaleye-api
+    runtime: docker
+    rootDir: apps/api
+    dockerfilePath: ./Dockerfile
+    plan: starter
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: WEB_CONCURRENCY
+        value: "2"
+      - key: SECRET_KEY
+        generateValue: true
+      # Supabase Postgres — Session pooler URL, async + sync forms.
+      - key: DATABASE_URL
+        sync: false   # postgresql+asyncpg://postgres.<ref>:<pw>@<host>:5432/postgres
+      - key: DATABASE_URL_SYNC
+        sync: false   # postgresql+psycopg://postgres.<ref>:<pw>@<host>:5432/postgres
+      - key: CORS_ORIGINS
+        sync: false   # https://your-app.vercel.app
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_VISION_MODEL
+        value: google/gemini-2.5-flash
+      - key: OPENROUTER_TEXT_MODEL
+        value: anthropic/claude-sonnet-4
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: thermaleye
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        value: ThermalEye Alerts <alerts@thermaleye.app>
+      - key: DEFAULT_ALERT_RECIPIENT
+        value: singhpranav431@gmail.com
