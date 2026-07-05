@@ -211,9 +211,9 @@ export default function Landing() {
               <div className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-white/5">
                 <BadgeCheck className="h-5 w-5 shrink-0 text-green-500" />
                 <span className="text-gray-600 dark:text-gray-300">
-                  The predictive inspection platform{" "}
-                  <span className="font-semibold text-gray-900 dark:text-white">Tata Power</span> chose — over a
-                  ₹7-lakh vendor.
+                  Deployed on{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">Tata Power</span> transmission
+                  infrastructure.
                 </span>
               </div>
             </Reveal>

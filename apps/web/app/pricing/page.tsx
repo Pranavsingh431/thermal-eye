@@ -101,7 +101,7 @@ export default function PricingPage() {
           </Reveal>
           <Reveal delay={220}>
             <div className="mt-6 inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-sm dark:border-white/10 dark:bg-white/5">
-              <Check className="h-4 w-4 text-green-500" /> The platform Tata Power chose — over a ₹7-lakh vendor.
+              <Check className="h-4 w-4 text-green-500" /> Deployed on Tata Power transmission infrastructure.
             </div>
           </Reveal>
         </div>
