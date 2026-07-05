@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import uuid
 from contextlib import asynccontextmanager
 
@@ -27,14 +26,14 @@ async def lifespan(app: FastAPI):
     configure_logging()
     logger.info("startup", env=settings.environment, using_supabase=storage.USING_SUPABASE)
 
-    # Optional dev convenience: create tables without Alembic (e.g. sqlite smoke tests).
-    if not settings.is_production and os.getenv("AUTO_CREATE_TABLES") == "1":
-        from app.core.database import Base, engine
-        import app.models  # noqa: F401  (register mappers)
+    # Create tables on startup (idempotent — IF NOT EXISTS). Safe for both fresh
+    # Supabase installs and restarts against an existing schema.
+    from app.core.database import Base, engine
+    import app.models  # noqa: F401  (register mappers)
 
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("tables_created")
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    logger.info("tables_created")
 
     if not storage.USING_SUPABASE:
         storage.LOCAL_DIR.mkdir(parents=True, exist_ok=True)
