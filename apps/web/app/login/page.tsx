@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { ThermalEyeMark } from "@/components/landing/ThermalEyeMark";
+import { PasswordInput } from "@/components/PasswordInput";
 
 export default function LoginPage() {
   const { login } = useAuth();
@@ -46,8 +47,12 @@ export default function LoginPage() {
             </div>
             <div>
               <label className="label">Password</label>
-              <input className="input" type="password" required value={password}
-                onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
+              <PasswordInput
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                autoComplete="current-password"
+              />
             </div>
             <button className="btn-brand w-full" disabled={busy}>
               {busy ? "Signing in…" : "Sign in"}

@@ -6,11 +6,14 @@ import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { ThermalEyeMark } from "@/components/landing/ThermalEyeMark";
+import { PasswordInput, PasswordRequirements, isPasswordValid } from "@/components/PasswordInput";
 
 export default function RegisterPage() {
   const { register } = useAuth();
   const [form, setForm] = useState({ full_name: "", organization_name: "", email: "", password: "" });
   const [busy, setBusy] = useState(false);
+
+  const pwValid = isPasswordValid(form.password);
 
   function set(k: keyof typeof form) {
     return (e: React.ChangeEvent<HTMLInputElement>) => setForm({ ...form, [k]: e.target.value });
@@ -18,6 +21,10 @@ export default function RegisterPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!pwValid) {
+      toast.error("Please choose a stronger password.");
+      return;
+    }
     setBusy(true);
     try {
       await register(form);
@@ -57,10 +64,17 @@ export default function RegisterPage() {
             </div>
             <div>
               <label className="label">Password</label>
-              <input className="input" type="password" required value={form.password} onChange={set("password")} placeholder="At least 10 characters" />
-              <p className="mt-1 text-xs text-gray-400">Min 10 chars, with letters and numbers.</p>
+              <PasswordInput
+                value={form.password}
+                onChange={set("password")}
+                required
+                autoComplete="new-password"
+                placeholder="At least 10 characters"
+                invalid={form.password.length > 0 && !pwValid}
+              />
+              {form.password.length > 0 && <PasswordRequirements value={form.password} />}
             </div>
-            <button className="btn-brand w-full" disabled={busy}>
+            <button className="btn-brand w-full" disabled={busy || !pwValid}>
               {busy ? "Creating…" : "Create workspace"}
             </button>
           </form>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
+import { PasswordInput, PasswordRequirements, isPasswordValid } from "@/components/PasswordInput";
 
 function ResetForm() {
   const params = useSearchParams();
@@ -13,8 +14,14 @@ function ResetForm() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const pwValid = isPasswordValid(password);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!pwValid) {
+      toast.error("Please choose a stronger password.");
+      return;
+    }
     setBusy(true);
     try {
       await api.auth.reset(token, password);
@@ -33,9 +40,17 @@ function ResetForm() {
       </div>
       <div>
         <label className="label">New password</label>
-        <input className="input" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 10 characters" />
+        <PasswordInput
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          autoComplete="new-password"
+          placeholder="At least 10 characters"
+          invalid={password.length > 0 && !pwValid}
+        />
+        {password.length > 0 && <PasswordRequirements value={password} />}
       </div>
-      <button className="btn-brand w-full" disabled={busy}>{busy ? "Updating…" : "Update password"}</button>
+      <button className="btn-brand w-full" disabled={busy || !pwValid}>{busy ? "Updating…" : "Update password"}</button>
     </form>
   );
 }
