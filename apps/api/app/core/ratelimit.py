@@ -15,8 +15,8 @@ from starlette.responses import JSONResponse
 
 # path prefix -> (max_requests, window_seconds)
 LIMITS: dict[str, tuple[int, int]] = {
-    "/api/v1/auth/login": (10, 60),
-    "/api/v1/auth/register": (5, 60),
+    "/api/v1/auth/login": (20, 60),
+    "/api/v1/auth/register": (15, 60),
     "/api/v1/auth/forgot-password": (5, 60),
     "/api/v1/auth/reset-password": (10, 60),
 }
@@ -34,6 +34,11 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         return None
 
     async def dispatch(self, request: Request, call_next):
+        # Never rate-limit CORS preflight requests — they carry no credentials and
+        # blocking them breaks the browser before the real request is even sent.
+        if request.method == "OPTIONS":
+            return await call_next(request)
+
         cfg = self._limit_for(request.url.path)
         if cfg is None:
             return await call_next(request)

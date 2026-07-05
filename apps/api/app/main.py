@@ -52,6 +52,12 @@ def create_app() -> FastAPI:
         openapi_url="/openapi.json",
     )
 
+    # Order matters: Starlette runs the LAST-added middleware OUTERMOST. CORS must be
+    # outermost so that error responses from inner middleware (e.g. a 429 from the rate
+    # limiter) still carry Access-Control-Allow-Origin — otherwise the browser reports a
+    # misleading "No 'Access-Control-Allow-Origin' header" / net::ERR_FAILED instead of 429.
+    app.add_middleware(RateLimitMiddleware)
+    app.add_middleware(RequestContextMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
@@ -61,8 +67,6 @@ def create_app() -> FastAPI:
         expose_headers=["X-Request-ID"],
         max_age=3600,
     )
-    app.add_middleware(RequestContextMiddleware)
-    app.add_middleware(RateLimitMiddleware)
 
     @app.exception_handler(RequestValidationError)
     async def validation_handler(request: Request, exc: RequestValidationError):
