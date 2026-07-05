@@ -26,7 +26,7 @@ import {
 } from "recharts";
 import { api } from "@/lib/api";
 import type { AssetHealth, FleetHealthSummary } from "@/lib/types";
-import { cn, formatDay } from "@/lib/utils";
+import { cn, formatDay, formatMoney } from "@/lib/utils";
 
 const RISK = {
   CRITICAL: { badge: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300", bar: "#dc2626", label: "Critical" },
@@ -124,7 +124,7 @@ function HealthChart({ h, threshold }: { h: AssetHealth; threshold: number }) {
   );
 }
 
-function AssetRow({ h, threshold }: { h: AssetHealth; threshold: number }) {
+function AssetRow({ h, threshold, currency }: { h: AssetHealth; threshold: number; currency: string }) {
   const [open, setOpen] = useState(false);
   const risk = riskOf(h.risk_level);
   return (
@@ -173,7 +173,7 @@ function AssetRow({ h, threshold }: { h: AssetHealth; threshold: number }) {
                   <Stat label="First inspected" value={formatDay(h.first_seen)} />
                   <Stat label="Last inspected" value={formatDay(h.last_seen)} />
                   <Stat label="Trend fit (R²)" value={h.r_squared != null ? h.r_squared.toFixed(2) : "—"} />
-                  <Stat label="Region" value={h.region || "—"} />
+                  <Stat label="Cost if it fails" value={h.failure_cost ? formatMoney(h.failure_cost, currency) : "—"} />
                 </div>
               </div>
             </div>
@@ -193,14 +193,94 @@ function Stat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function SummaryCard({ icon: Icon, label, value, tone }: { icon: React.ElementType; label: string; value: string | number; tone?: string }) {
+function SummaryCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+  sub,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  tone?: string;
+  sub?: string;
+}) {
   return (
     <div className="card p-5">
       <div className="flex items-center justify-between">
         <span className="text-sm text-gray-500">{label}</span>
         <Icon className={cn("h-5 w-5", tone || "text-gray-400")} />
       </div>
-      <div className="mt-2 text-3xl font-bold">{value}</div>
+      <div className={cn("mt-2 text-3xl font-bold", tone === "text-warning" && "text-amber-600 dark:text-amber-400")}>
+        {value}
+      </div>
+      {sub && <div className="mt-0.5 text-xs text-gray-400">{sub}</div>}
+    </div>
+  );
+}
+
+/** Groups at-risk assets into action windows — the "predictive maintenance calendar." */
+function MaintenanceSchedule({ assets }: { assets: AssetHealth[] }) {
+  const buckets = [
+    {
+      key: "now",
+      title: "Immediate",
+      hint: "At or past critical — dispatch now",
+      color: "#dc2626",
+      items: assets.filter((a) => a.months_to_critical != null && a.months_to_critical <= 1),
+    },
+    {
+      key: "quarter",
+      title: "This quarter",
+      hint: "Projected critical within ~3 months",
+      color: "#d97706",
+      items: assets.filter((a) => a.months_to_critical != null && a.months_to_critical > 1 && a.months_to_critical <= 3),
+    },
+    {
+      key: "half",
+      title: "Within 6 months",
+      hint: "Trending — plan a visit",
+      color: "#ca8a04",
+      items: assets.filter((a) => a.months_to_critical != null && a.months_to_critical > 3 && a.months_to_critical <= 6),
+    },
+  ];
+  if (buckets.every((b) => b.items.length === 0)) return null;
+
+  return (
+    <div className="card p-6">
+      <div className="mb-4 flex items-center gap-2">
+        <CalendarClock className="h-4 w-4 text-brand" />
+        <h3 className="font-semibold">Recommended maintenance schedule</h3>
+        <span className="text-xs text-gray-400">Forecast-driven work plan</span>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {buckets.map((b) => (
+          <div key={b.key} className="rounded-xl border border-gray-200 p-4 dark:border-gray-800">
+            <div className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-full" style={{ background: b.color }} />
+              <span className="text-sm font-semibold">{b.title}</span>
+              <span className="ml-auto text-xs text-gray-400">{b.items.length}</span>
+            </div>
+            <p className="mt-0.5 text-xs text-gray-400">{b.hint}</p>
+            <div className="mt-3 space-y-2">
+              {b.items.length === 0 ? (
+                <p className="text-xs text-gray-400">Nothing scheduled.</p>
+              ) : (
+                b.items.slice(0, 6).map((a) => (
+                  <div key={a.asset_id} className="flex items-center justify-between gap-2 text-sm">
+                    <span className="truncate">{a.asset_name}</span>
+                    <span className="shrink-0 text-xs text-gray-400">
+                      {a.predicted_cross_date ? formatDay(a.predicted_cross_date) : `~${a.months_to_critical} mo`}
+                    </span>
+                  </div>
+                ))
+              )}
+              {b.items.length > 6 && <p className="text-xs text-gray-400">+{b.items.length - 6} more</p>}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -269,11 +349,19 @@ export default function HealthPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <SummaryCard
+              icon={AlertTriangle}
+              label="Value at risk"
+              value={data.value_at_risk > 0 ? formatMoney(data.value_at_risk, data.currency) : "—"}
+              tone="text-warning"
+              sub={`across ${data.at_risk_count} at-risk asset${data.at_risk_count === 1 ? "" : "s"}`}
+            />
             <SummaryCard icon={Activity} label="Assets analyzed" value={data.assets_analyzed} tone="text-brand" />
-            <SummaryCard icon={AlertTriangle} label="At risk" value={data.at_risk_count} tone="text-critical" />
             <SummaryCard icon={TrendingUp} label="Worsening trend" value={data.worsening_count} tone="text-warning" />
             <SummaryCard icon={ShieldCheck} label="Critical ΔT" value={`${data.critical_threshold_delta}°C`} tone="text-normal" />
           </div>
+
+          <MaintenanceSchedule assets={data.assets} />
 
           <div className="card overflow-hidden">
             <div className="flex items-center gap-2 border-b border-gray-100 px-4 py-3 dark:border-gray-800">
@@ -295,7 +383,7 @@ export default function HealthPage() {
                 </thead>
                 <tbody>
                   {data.assets.map((h) => (
-                    <AssetRow key={h.asset_id} h={h} threshold={data.critical_threshold_delta} />
+                    <AssetRow key={h.asset_id} h={h} threshold={data.critical_threshold_delta} currency={data.currency} />
                   ))}
                 </tbody>
               </table>

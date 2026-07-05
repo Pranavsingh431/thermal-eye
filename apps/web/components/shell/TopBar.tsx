@@ -1,19 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { Menu, ChevronDown, LogOut, Check } from "lucide-react";
+import { Menu, ChevronDown, LogOut, Check, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
-export function TopBar({ onMenu }: { onMenu: () => void }) {
+export function TopBar({
+  onMenu,
+  onToggleSidebar,
+  collapsed = false,
+}: {
+  onMenu: () => void;
+  onToggleSidebar?: () => void;
+  collapsed?: boolean;
+}) {
   const { me, org, logout, switchOrg } = useAuth();
   const [open, setOpen] = useState(false);
 
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-gray-200 bg-white/80 px-4 backdrop-blur dark:border-gray-800 dark:bg-gray-900/80 lg:px-6">
-      <button className="lg:hidden" onClick={onMenu}><Menu className="h-6 w-6" /></button>
-      <div className="hidden lg:block text-sm text-gray-500">
-        {org ? `${org.name} · ${me?.active_role}` : ""}
+      <div className="flex items-center gap-3">
+        <button className="lg:hidden" onClick={onMenu} aria-label="Open menu">
+          <Menu className="h-6 w-6" />
+        </button>
+        <button
+          className="hidden h-9 w-9 place-items-center rounded-xl border border-gray-200 text-gray-500 transition-colors hover:bg-gray-100 dark:border-gray-800 dark:hover:bg-gray-800 lg:grid"
+          onClick={onToggleSidebar}
+          aria-label={collapsed ? "Show sidebar" : "Hide sidebar"}
+          title={collapsed ? "Show sidebar" : "Hide sidebar"}
+        >
+          {collapsed ? <PanelLeftOpen className="h-[18px] w-[18px]" /> : <PanelLeftClose className="h-[18px] w-[18px]" />}
+        </button>
+        <div className="hidden text-sm text-gray-500 lg:block">
+          {org ? `${org.name} · ${me?.active_role}` : ""}
+        </div>
       </div>
 
       <div className="ml-auto flex items-center gap-2">

@@ -2,6 +2,7 @@ import Link from "next/link";
 import {
   Activity,
   ArrowRight,
+  BadgeCheck,
   BellRing,
   FileText,
   Gauge,
@@ -14,9 +15,9 @@ import {
   TrendingUp,
   Zap,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { Reveal } from "@/components/landing/Reveal";
 import { ThermalEyeMark } from "@/components/landing/ThermalEyeMark";
+import { LandingNav, LandingFooter } from "@/components/landing/LandingChrome";
 
 const features = [
   {
@@ -74,6 +75,7 @@ const steps = [
 ];
 
 const credentials = [
+  "Deployed with Tata Power",
   "Built by IIT Ropar engineers",
   "Incubated at TBIF · IIT Ropar",
   "Proven on live transmission infrastructure",
@@ -87,41 +89,6 @@ const security = [
   { icon: FileText, title: "Signed URLs & audit logs", text: "Private storage, time-boxed links, full audit trail." },
   { icon: Activity, title: "White-labeled", text: "Your logo, colors, thresholds and alert routing." },
 ];
-
-function LandingNav() {
-  return (
-    <header className="sticky top-0 z-50 border-b border-gray-200/70 bg-white/70 backdrop-blur-xl dark:border-white/10 dark:bg-[#0a0a0a]/70">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5">
-        <Link href="/" className="flex items-center gap-2.5">
-          <ThermalEyeMark className="h-9 w-9 text-gray-900 dark:text-white" />
-          <span className="flex flex-col leading-none">
-            <span className="text-[15px] font-bold tracking-tight">Thermal Eye</span>
-            <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-gray-400">by Evizen AI</span>
-          </span>
-        </Link>
-
-        <nav className="hidden items-center gap-8 text-sm font-medium text-gray-600 dark:text-gray-300 md:flex">
-          <a href="#how" className="transition-colors hover:text-gray-900 dark:hover:text-white">How it works</a>
-          <a href="#predict" className="transition-colors hover:text-gray-900 dark:hover:text-white">Prediction</a>
-          <a href="#security" className="transition-colors hover:text-gray-900 dark:hover:text-white">Security</a>
-        </nav>
-
-        <div className="flex items-center gap-2.5">
-          <ThemeToggle />
-          <Link
-            href="/login"
-            className="hidden text-sm font-medium text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-300 dark:hover:text-white sm:block"
-          >
-            Sign in
-          </Link>
-          <Link href="/register" className="btn-brand !py-2">
-            Start free
-          </Link>
-        </div>
-      </div>
-    </header>
-  );
-}
 
 function PredictionMock() {
   return (
@@ -238,6 +205,17 @@ export default function Landing() {
                 tower crosses critical <span className="font-semibold text-gray-900 dark:text-white">next</span> — so
                 crews fix the fault while it's still cheap, not after the outage.
               </p>
+            </Reveal>
+
+            <Reveal delay={200}>
+              <div className="mt-6 inline-flex items-center gap-2.5 rounded-full border border-gray-200 bg-white/70 px-4 py-2 text-sm shadow-sm dark:border-white/10 dark:bg-white/5">
+                <BadgeCheck className="h-5 w-5 shrink-0 text-green-500" />
+                <span className="text-gray-600 dark:text-gray-300">
+                  The predictive inspection platform{" "}
+                  <span className="font-semibold text-gray-900 dark:text-white">Tata Power</span> chose — over a
+                  ₹7-lakh vendor.
+                </span>
+              </div>
             </Reveal>
 
             <Reveal delay={240}>
@@ -522,21 +500,7 @@ export default function Landing() {
         </Reveal>
       </section>
 
-      {/* ── Footer ───────────────────────────────────────────────────────── */}
-      <footer className="border-t border-gray-200/70 py-10 dark:border-white/10">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 sm:flex-row">
-          <div className="flex items-center gap-2.5">
-            <ThermalEyeMark className="h-7 w-7 text-gray-900 dark:text-white" />
-            <span className="text-sm">
-              <span className="font-semibold">Thermal Eye</span>
-              <span className="text-gray-400"> · by Evizen AI</span>
-            </span>
-          </div>
-          <p className="text-sm text-gray-400">
-            © {new Date().getFullYear()} Evizen AI · Built for critical infrastructure teams.
-          </p>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   );
 }

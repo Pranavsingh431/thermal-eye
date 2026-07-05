@@ -19,7 +19,15 @@ const nav = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Sidebar({
+  open,
+  onClose,
+  collapsed = false,
+}: {
+  open: boolean;
+  onClose: () => void;
+  collapsed?: boolean;
+}) {
   const pathname = usePathname();
   const { org } = useAuth();
 
@@ -28,8 +36,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       {open && <div className="fixed inset-0 z-30 bg-black/40 lg:hidden" onClick={onClose} />}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-gray-200 bg-white transition-transform dark:border-gray-800 dark:bg-gray-900 lg:translate-x-0",
-          open ? "translate-x-0" : "-translate-x-full"
+          "fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r border-gray-200 bg-white transition-transform dark:border-gray-800 dark:bg-gray-900",
+          open ? "translate-x-0" : "-translate-x-full",
+          collapsed ? "lg:-translate-x-full" : "lg:translate-x-0"
         )}
       >
         <div className="flex h-16 items-center justify-between px-5">

@@ -64,11 +64,21 @@ async def _org_thresholds(db: DbSession, org_id: uuid.UUID) -> dict:
     return (org.settings or {}).get("thresholds", {}) if org else {}
 
 
+_DEFAULT_FAILURE_COSTS = {
+    "transformer": 6000000, "substation": 4000000, "line": 800000, "tower": 500000,
+    "insulator": 150000, "solar_panel": 100000, "equipment": 300000, "other": 300000,
+}
+
+
 @router.get("/health", response_model=FleetHealthSummary)
 async def fleet_health(ctx: OrgContext, db: DbSession) -> FleetHealthSummary:
     """Predictive maintenance across the fleet: rank assets by which fails next."""
     org_id = ctx.org_id
-    thresholds = await _org_thresholds(db, org_id)
+    org = await db.get(Organization, org_id)
+    org_settings = (org.settings or {}) if org else {}
+    thresholds = org_settings.get("thresholds", {})
+    currency = org_settings.get("currency", "INR")
+    failure_costs = {**_DEFAULT_FAILURE_COSTS, **(org_settings.get("failure_costs") or {})}
 
     assets = (await db.execute(select(Asset).where(Asset.org_id == org_id))).scalars().all()
     insps = (
@@ -99,12 +109,17 @@ async def fleet_health(ctx: OrgContext, db: DbSession) -> FleetHealthSummary:
 
     healths = [compute_asset_health(a, by_asset.get(a.id, []), thresholds) for a in assets]
     analyzed = [h for h in healths if h.inspection_count > 0]
+    for h in analyzed:
+        h.failure_cost = float(failure_costs.get(h.asset_type, failure_costs.get("other", 0)))
     analyzed.sort(
         key=lambda h: (
             risk_rank(h.risk_level),
             h.months_to_critical if h.months_to_critical is not None else 9_999,
             h.health_score,
         )
+    )
+    value_at_risk = sum(
+        h.failure_cost or 0 for h in analyzed if h.risk_level in ("CRITICAL", "WARNING")
     )
 
     return FleetHealthSummary(
@@ -115,6 +130,8 @@ async def fleet_health(ctx: OrgContext, db: DbSession) -> FleetHealthSummary:
         worsening_count=sum(1 for h in analyzed if h.trend == "worsening"),
         total_inspections=total_completed,
         matched_inspections=len(insps),
+        value_at_risk=value_at_risk,
+        currency=currency,
         assets=analyzed,
     )
 
@@ -124,7 +141,10 @@ async def asset_health(asset_id: uuid.UUID, ctx: OrgContext, db: DbSession) -> A
     asset = await db.get(Asset, asset_id)
     if not asset or asset.org_id != ctx.org_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")
-    thresholds = await _org_thresholds(db, ctx.org_id)
+    org = await db.get(Organization, ctx.org_id)
+    org_settings = (org.settings or {}) if org else {}
+    thresholds = org_settings.get("thresholds", {})
+    failure_costs = {**_DEFAULT_FAILURE_COSTS, **(org_settings.get("failure_costs") or {})}
     insps = (
         await db.execute(
             select(Inspection).where(
@@ -133,7 +153,9 @@ async def asset_health(asset_id: uuid.UUID, ctx: OrgContext, db: DbSession) -> A
             )
         )
     ).scalars().all()
-    return compute_asset_health(asset, list(insps), thresholds)
+    health = compute_asset_health(asset, list(insps), thresholds)
+    health.failure_cost = float(failure_costs.get(asset.asset_type, failure_costs.get("other", 0)))
+    return health
 
 
 @router.post("", response_model=AssetOut, status_code=status.HTTP_201_CREATED)

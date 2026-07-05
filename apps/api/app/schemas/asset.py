@@ -100,6 +100,7 @@ class AssetHealth(BaseModel):
     predicted_cross_date: datetime | None
     months_to_critical: float | None
     recommendation: str
+    failure_cost: float | None = None  # typical cost of failure for this asset type
 
     history: list[AssetHealthPoint] = Field(default_factory=list)
 
@@ -112,4 +113,6 @@ class FleetHealthSummary(BaseModel):
     worsening_count: int
     total_inspections: int  # completed inspections org-wide
     matched_inspections: int  # completed inspections tied to a grid asset
+    value_at_risk: float = 0  # sum of failure costs for at-risk assets
+    currency: str = "INR"
     assets: list[AssetHealth]

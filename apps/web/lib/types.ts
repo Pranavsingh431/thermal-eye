@@ -45,6 +45,8 @@ export interface OrgSettings {
   threshold_profiles?: Record<string, Thresholds>;
   units?: string; // "celsius" | "fahrenheit"
   emissivity?: number;
+  currency?: string;
+  failure_costs?: Record<string, number>;
   timezone?: string;
   alert_recipients?: string[];
   alerts_enabled: boolean;
@@ -206,6 +208,7 @@ export interface AssetHealth {
   predicted_cross_date: string | null; // when ΔT is projected to cross the critical threshold
   months_to_critical: number | null;
   recommendation: string;
+  failure_cost: number | null;
   history: AssetHealthPoint[];
 }
 
@@ -217,5 +220,7 @@ export interface FleetHealthSummary {
   worsening_count: number;
   total_inspections: number;
   matched_inspections: number;
+  value_at_risk: number;
+  currency: string;
   assets: AssetHealth[];
 }

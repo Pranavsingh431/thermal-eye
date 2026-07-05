@@ -46,6 +46,8 @@ class OrgSettingsUpdate(BaseModel):
     threshold_profiles: dict[str, ThresholdSettings] | None = None
     units: str | None = None  # "celsius" | "fahrenheit"
     emissivity: float | None = Field(default=None, ge=0.1, le=1.0)
+    currency: str | None = None  # "INR", "USD", …
+    failure_costs: dict[str, float] | None = None  # cost of failure per asset type
     timezone: str | None = None
     alert_recipients: list[EmailStr] | None = None
     alerts_enabled: bool | None = None

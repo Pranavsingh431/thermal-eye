@@ -28,10 +28,24 @@ DEFAULT_SETTINGS: dict[str, Any] = {
         "critical_abs": 80,
     },
     "units": "celsius",  # celsius | fahrenheit
+    "emissivity": 0.95,
     "timezone": "Asia/Kolkata",
     "alert_recipients": [],  # falls back to DEFAULT_ALERT_RECIPIENT when empty
     "alerts_enabled": True,
     "map": {"center": [20.5937, 78.9629], "zoom": 5},  # default: India; org can override
+    # ROI model: typical cost of an unplanned failure per asset type (used to
+    # quantify "value at risk"). Rough order-of-magnitude defaults in INR.
+    "currency": "INR",
+    "failure_costs": {
+        "transformer": 6000000,  # ₹60L
+        "substation": 4000000,  # ₹40L
+        "line": 800000,  # ₹8L
+        "tower": 500000,  # ₹5L
+        "insulator": 150000,  # ₹1.5L
+        "solar_panel": 100000,  # ₹1L
+        "equipment": 300000,
+        "other": 300000,
+    },
 }
 
 

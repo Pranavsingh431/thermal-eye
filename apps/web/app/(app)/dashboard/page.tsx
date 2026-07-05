@@ -13,6 +13,7 @@ import {
   Gauge,
   TrendingUp,
   ArrowRight,
+  ShieldAlert,
 } from "lucide-react";
 import {
   Area,
@@ -27,8 +28,8 @@ import {
   YAxis,
 } from "recharts";
 import { api } from "@/lib/api";
-import type { AssetHealth, DashboardStats, Inspection, TrendResponse } from "@/lib/types";
-import { faultBadgeClass, faultColor, formatDay } from "@/lib/utils";
+import type { AssetHealth, DashboardStats, FleetHealthSummary, Inspection, TrendResponse } from "@/lib/types";
+import { faultBadgeClass, faultColor, formatDay, formatMoney } from "@/lib/utils";
 
 function StatCard({
   icon: Icon,
@@ -66,6 +67,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recent, setRecent] = useState<Inspection[]>([]);
   const [trend, setTrend] = useState<TrendResponse | null>(null);
+  const [fleet, setFleet] = useState<FleetHealthSummary | null>(null);
   const [risk, setRisk] = useState<AssetHealth[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +82,7 @@ export default function DashboardPage() {
         setStats(s);
         setRecent(r);
         setTrend(t);
+        setFleet(f);
         setRisk(f ? f.assets.filter((a) => a.risk_level !== "NORMAL").slice(0, 5) : []);
       })
       .finally(() => setLoading(false));
@@ -130,6 +133,32 @@ export default function DashboardPage() {
         <StatCard icon={AlertTriangle} label="Warnings" value={stats?.warning_count ?? 0} tone="text-warning" />
         <StatCard icon={Network} label="Assets tracked" value={stats?.total_assets ?? 0} tone="text-brand" />
       </div>
+
+      {/* Value at risk — the number that reframes the sale */}
+      {fleet && fleet.value_at_risk > 0 && (
+        <Link
+          href="/health"
+          className="group flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-gradient-to-r from-amber-500/[0.08] to-red-500/[0.06] p-5 transition-colors hover:border-amber-500/50"
+        >
+          <div className="flex items-center gap-4">
+            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-amber-500/15 text-amber-600 dark:text-amber-400">
+              <ShieldAlert className="h-6 w-6" />
+            </span>
+            <div>
+              <p className="text-sm text-gray-500">Value at risk</p>
+              <p className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+                {formatMoney(fleet.value_at_risk, fleet.currency)}
+              </p>
+            </div>
+          </div>
+          <p className="max-w-md text-sm text-gray-500">
+            Estimated cost of unplanned failure across{" "}
+            <span className="font-semibold text-gray-700 dark:text-gray-300">{fleet.at_risk_count}</span>{" "}
+            at-risk asset{fleet.at_risk_count === 1 ? "" : "s"}. Early detection is what protects it —{" "}
+            <span className="font-medium text-brand group-hover:underline">see the forecast →</span>
+          </p>
+        </Link>
+      )}
 
       {/* Secondary metric strip */}
       <div className="grid gap-4 sm:grid-cols-3">

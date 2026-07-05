@@ -5,13 +5,17 @@ import { toast } from "sonner";
 import { Palette, SlidersHorizontal, Users, Plus, Trash2, BellRing, Upload, Thermometer } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { applyBrand } from "@/lib/utils";
+import { applyBrand, formatMoney } from "@/lib/utils";
 import { BrandLogo } from "@/components/BrandLogo";
 import type { Member, Organization, Thresholds } from "@/lib/types";
 
 type Tab = "branding" | "thermal" | "alerts" | "team";
 
 const ASSET_TYPES = ["tower", "line", "substation", "transformer", "insulator", "solar_panel", "equipment"];
+const COST_TYPES = ["transformer", "substation", "tower", "line", "insulator", "solar_panel"];
+const DEFAULT_COSTS: Record<string, number> = {
+  transformer: 6000000, substation: 4000000, line: 800000, tower: 500000, insulator: 150000, solar_panel: 100000,
+};
 
 export default function SettingsPage() {
   const { org, reload, me } = useAuth();
@@ -235,6 +239,8 @@ function ThermalTab({ org, onSaved, disabled }: { org: Organization; onSaved: ()
   const [emissivity, setEmissivity] = useState(s.emissivity ?? 0.95);
   const [t, setT] = useState<Thresholds>(s.thresholds);
   const [profiles, setProfiles] = useState<Record<string, Thresholds>>(s.threshold_profiles || {});
+  const [currency, setCurrency] = useState(s.currency || "INR");
+  const [costs, setCosts] = useState<Record<string, number>>({ ...DEFAULT_COSTS, ...(s.failure_costs || {}) });
   const [newType, setNewType] = useState(ASSET_TYPES[0]);
   const [busy, setBusy] = useState(false);
   const unit = units === "fahrenheit" ? "°F" : "°C";
@@ -242,7 +248,14 @@ function ThermalTab({ org, onSaved, disabled }: { org: Organization; onSaved: ()
   async function save() {
     setBusy(true);
     try {
-      await api.org.updateSettings({ units, emissivity, thresholds: t, threshold_profiles: profiles });
+      await api.org.updateSettings({
+        units,
+        emissivity,
+        thresholds: t,
+        threshold_profiles: profiles,
+        currency,
+        failure_costs: costs,
+      });
       toast.success("Thermal model saved");
       onSaved();
     } catch (err) {
@@ -347,6 +360,44 @@ function ThermalTab({ org, onSaved, disabled }: { org: Organization; onSaved: ()
             </button>
           </div>
         )}
+      </div>
+
+      <div className="card space-y-4 p-6">
+        <div>
+          <h3 className="font-semibold">Cost of failure (ROI)</h3>
+          <p className="text-sm text-gray-500">
+            Typical cost of an unplanned failure per asset type. Powers the &ldquo;value at risk&rdquo; figure
+            on your dashboard — set these to your own numbers.
+          </p>
+        </div>
+        <div className="w-40">
+          <label className="label">Currency</label>
+          <select className="input" value={currency} disabled={disabled} onChange={(e) => setCurrency(e.target.value)}>
+            <option value="INR">INR (₹)</option>
+            <option value="USD">USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="GBP">GBP (£)</option>
+          </select>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {COST_TYPES.map((type) => (
+            <div key={type}>
+              <label className="label capitalize">{type.replace("_", " ")}</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  className="input"
+                  value={costs[type] ?? 0}
+                  disabled={disabled}
+                  onChange={(e) => setCosts({ ...costs, [type]: Number(e.target.value) })}
+                />
+                <span className="w-16 shrink-0 text-xs text-gray-400">
+                  {formatMoney(costs[type] ?? 0, currency)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
       {!disabled && (

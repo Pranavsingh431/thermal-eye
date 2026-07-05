@@ -50,6 +50,27 @@ export function formatDay(iso?: string | null): string {
   return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
 }
 
+/** Compact money formatting. INR uses Cr / L (Indian convention); others use Intl compact. */
+export function formatMoney(n: number, currency = "INR"): string {
+  if (!n) return currency === "INR" ? "₹0" : "0";
+  if (currency === "INR") {
+    if (n >= 1e7) return `₹${(n / 1e7).toFixed(n % 1e7 === 0 ? 0 : 2).replace(/\.?0+$/, "")} Cr`;
+    if (n >= 1e5) return `₹${(n / 1e5).toFixed(n % 1e5 === 0 ? 0 : 1).replace(/\.0$/, "")} L`;
+    if (n >= 1e3) return `₹${Math.round(n / 1e3)}k`;
+    return `₹${Math.round(n)}`;
+  }
+  try {
+    return new Intl.NumberFormat(undefined, {
+      style: "currency",
+      currency,
+      notation: "compact",
+      maximumFractionDigits: 1,
+    }).format(n);
+  } catch {
+    return `${n}`;
+  }
+}
+
 /** Convert a #rrggbb / #rgb hex to the "H S% L%" triplet used by our CSS vars. */
 function hexToHslTriplet(hex: string): string | null {
   const m = hex.trim().replace(/^#/, "");
