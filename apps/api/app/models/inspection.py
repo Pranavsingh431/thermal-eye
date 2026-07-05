@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
-from sqlalchemy import Float, ForeignKey, Index, Integer, String, Text
+from sqlalchemy import DateTime, Float, ForeignKey, Index, Integer, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
@@ -65,7 +65,9 @@ class Inspection(Base, TimestampMixin):
     original_filename: Mapped[str | None] = mapped_column(String(300), nullable=True)
     image_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     thumbnail_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    captured_at: Mapped[datetime | None] = mapped_column(nullable=True)
+    # timezone=True → TIMESTAMPTZ. We always store aware UTC datetimes here
+    # (from the backdate override / EXIF), which a naive column rejects on Postgres.
+    captured_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     # Location (from EXIF or matched asset)
     latitude: Mapped[float | None] = mapped_column(Float, nullable=True)

@@ -28,11 +28,31 @@ async def lifespan(app: FastAPI):
 
     # Create tables on startup (idempotent — IF NOT EXISTS). Safe for both fresh
     # Supabase installs and restarts against an existing schema.
+    from sqlalchemy import text
+
     from app.core.database import Base, engine
     import app.models  # noqa: F401  (register mappers)
 
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        # One-time fixup: earlier schemas created `inspections.captured_at` as a
+        # naive TIMESTAMP, which asyncpg rejects when handed an aware UTC datetime.
+        # create_all never ALTERs existing columns, so correct it here. Idempotent:
+        # only runs while the column is still the naive type.
+        if engine.dialect.name == "postgresql":
+            col_type = await conn.scalar(
+                text(
+                    "SELECT data_type FROM information_schema.columns "
+                    "WHERE table_name = 'inspections' AND column_name = 'captured_at'"
+                )
+            )
+            if col_type == "timestamp without time zone":
+                await conn.exec_driver_sql(
+                    "ALTER TABLE inspections ALTER COLUMN captured_at "
+                    "TYPE timestamptz USING captured_at AT TIME ZONE 'UTC'"
+                )
+                logger.info("migrated_captured_at_to_timestamptz")
     logger.info("tables_created")
 
     if not storage.USING_SUPABASE:
