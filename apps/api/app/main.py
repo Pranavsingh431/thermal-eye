@@ -70,7 +70,15 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_handler(request: Request, exc: RequestValidationError):
-        return JSONResponse(status_code=422, content={"detail": exc.errors()})
+        # Pydantic v2's exc.errors() embeds the original exception (e.g. a ValueError
+        # from a custom validator) under "ctx", which is NOT JSON-serializable and would
+        # crash json.dumps here — turning a clean 422 into a 500 with no CORS headers.
+        # Keep only the serializable fields the client needs.
+        detail = [
+            {"type": e.get("type"), "loc": list(e.get("loc", ())), "msg": e.get("msg")}
+            for e in exc.errors()
+        ]
+        return JSONResponse(status_code=422, content={"detail": detail})
 
     @app.exception_handler(Exception)
     async def unhandled_handler(request: Request, exc: Exception):
