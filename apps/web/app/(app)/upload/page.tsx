@@ -13,7 +13,9 @@ export default function UploadPage() {
   const [busy, setBusy] = useState(false);
   const [results, setResults] = useState<Inspection[] | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [capturedDate, setCapturedDate] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
+  const today = new Date().toISOString().slice(0, 10);
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -26,7 +28,7 @@ export default function UploadPage() {
     setBusy(true);
     setResults(null);
     try {
-      const res = await api.inspections.upload(files);
+      const res = await api.inspections.upload(files, capturedDate || undefined);
       setResults(res.inspections);
       const crit = res.inspections.filter((i) => i.fault_level === "CRITICAL").length;
       toast.success(`Analyzed ${res.inspections.length} image(s)${crit ? ` · ${crit} critical` : ""}`);
@@ -68,13 +70,28 @@ export default function UploadPage() {
         <div className="card p-5">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-semibold">{files.length} image(s) ready</h3>
-            <div className="flex gap-2">
+            <div className="flex items-end gap-2">
+              <div>
+                <label className="mb-1 block text-xs font-medium text-gray-500">Inspection date</label>
+                <input
+                  type="date"
+                  className="input !py-2 !w-auto"
+                  max={today}
+                  value={capturedDate}
+                  onChange={(e) => setCapturedDate(e.target.value)}
+                  title="Set the date these images were captured (defaults to each image's EXIF date, else today)."
+                />
+              </div>
               <button className="btn-ghost" onClick={() => setFiles([])} disabled={busy}>Clear</button>
               <button className="btn-brand" onClick={onUpload} disabled={busy}>
                 {busy ? <><Loader2 className="h-4 w-4 animate-spin" /> Analyzing…</> : "Analyze"}
               </button>
             </div>
           </div>
+          <p className="mb-3 -mt-1 text-xs text-gray-400">
+            Uploading yesterday&apos;s images? Set the inspection date so trends and history are dated correctly.
+            Leave blank to use each photo&apos;s EXIF capture date (or today).
+          </p>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-5 md:grid-cols-8">
             {files.map((f, idx) => (
               <div key={idx} className="group relative aspect-square overflow-hidden rounded-lg border border-gray-200 dark:border-gray-800">

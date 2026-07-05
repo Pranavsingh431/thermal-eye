@@ -5,6 +5,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
+import { ThermalEyeMark } from "@/components/landing/ThermalEyeMark";
 
 export default function RegisterPage() {
   const { register } = useAuth();
@@ -31,9 +32,12 @@ export default function RegisterPage() {
   return (
     <div className="grid min-h-screen place-items-center bg-gray-950 px-4 py-10">
       <div className="w-full max-w-md animate-fade-in">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-2 text-white">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-brand text-brand-fg">TE</div>
-          <span className="text-lg font-bold">ThermalEye</span>
+        <Link href="/" className="mb-8 flex items-center justify-center gap-2.5 text-white">
+          <ThermalEyeMark className="h-9 w-9 text-white" />
+          <span className="flex flex-col leading-none">
+            <span className="text-lg font-bold">Thermal Eye</span>
+            <span className="text-[10px] font-medium uppercase tracking-[0.18em] text-gray-400">by Evizen AI</span>
+          </span>
         </Link>
         <div className="card p-8">
           <h1 className="text-xl font-bold">Create your workspace</h1>

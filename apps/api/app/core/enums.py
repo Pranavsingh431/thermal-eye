@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from enum import StrEnum
+try:  # Python 3.11+
+    from enum import StrEnum
+except ImportError:  # Python 3.10 backport — members are real strs; str() is the value
+    from enum import Enum
+
+    class StrEnum(str, Enum):
+        __str__ = str.__str__
 
 
 class Role(StrEnum):

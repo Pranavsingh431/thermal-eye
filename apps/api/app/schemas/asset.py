@@ -65,3 +65,51 @@ class AssetImportResult(BaseModel):
     imported: int
     skipped: int
     errors: list[str] = Field(default_factory=list)
+
+
+# ── Predictive maintenance ("Insulator Health") ──────────────────────────────
+class AssetHealthPoint(BaseModel):
+    captured_at: datetime
+    measured_temp: float | None
+    delta_t: float | None
+    fault_level: str | None
+
+
+class AssetHealth(BaseModel):
+    asset_id: uuid.UUID
+    asset_name: str
+    external_id: str | None
+    asset_type: str
+    region: str | None
+    latitude: float | None
+    longitude: float | None
+    voltage_kv: float | None
+
+    inspection_count: int
+    first_seen: datetime | None
+    last_seen: datetime | None
+    latest_delta_t: float | None
+    latest_fault_level: str | None
+
+    trend: str  # worsening | stable | improving | insufficient_data
+    slope_c_per_month: float | None
+    r_squared: float | None
+
+    health_score: float  # 0..100 (100 = healthy)
+    risk_level: str  # CRITICAL | WARNING | NORMAL | UNKNOWN
+    predicted_cross_date: datetime | None
+    months_to_critical: float | None
+    recommendation: str
+
+    history: list[AssetHealthPoint] = Field(default_factory=list)
+
+
+class FleetHealthSummary(BaseModel):
+    generated_at: datetime
+    critical_threshold_delta: float
+    assets_analyzed: int
+    at_risk_count: int
+    worsening_count: int
+    total_inspections: int  # completed inspections org-wide
+    matched_inspections: int  # completed inspections tied to a grid asset
+    assets: list[AssetHealth]

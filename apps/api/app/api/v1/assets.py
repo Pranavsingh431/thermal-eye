@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import uuid
+from collections import defaultdict
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -10,17 +12,22 @@ from sqlalchemy import delete as sa_delete
 from sqlalchemy import func, select
 
 from app.api.deps import DbSession, OrgContext, require_role
-from app.core.enums import AssetType, Role
+from app.core.enums import AnalysisStatus, AssetType, Role
 from app.models.asset import Asset
+from app.models.inspection import Inspection
+from app.models.organization import Organization
 from app.schemas.asset import (
     AssetCreate,
+    AssetHealth,
     AssetImportResult,
     AssetOut,
     AssetUpdate,
+    FleetHealthSummary,
 )
 from app.schemas.common import Message
 from app.services.audit import record_audit
 from app.services.geo import parse_grid_file
+from app.services.predictive import compute_asset_health, risk_rank
 
 router = APIRouter(prefix="/assets", tags=["assets"])
 
@@ -50,6 +57,83 @@ async def list_assets(
     stmt = stmt.order_by(Asset.created_at.desc()).limit(limit).offset(offset)
     rows = (await db.execute(stmt)).scalars().all()
     return [AssetOut.model_validate(a) for a in rows]
+
+
+async def _org_thresholds(db: DbSession, org_id: uuid.UUID) -> dict:
+    org = await db.get(Organization, org_id)
+    return (org.settings or {}).get("thresholds", {}) if org else {}
+
+
+@router.get("/health", response_model=FleetHealthSummary)
+async def fleet_health(ctx: OrgContext, db: DbSession) -> FleetHealthSummary:
+    """Predictive maintenance across the fleet: rank assets by which fails next."""
+    org_id = ctx.org_id
+    thresholds = await _org_thresholds(db, org_id)
+
+    assets = (await db.execute(select(Asset).where(Asset.org_id == org_id))).scalars().all()
+    insps = (
+        await db.execute(
+            select(Inspection).where(
+                Inspection.org_id == org_id,
+                Inspection.asset_id.is_not(None),
+                Inspection.analysis_status == AnalysisStatus.COMPLETED.value,
+            )
+        )
+    ).scalars().all()
+
+    total_completed = int(
+        await db.scalar(
+            select(func.count())
+            .select_from(Inspection)
+            .where(
+                Inspection.org_id == org_id,
+                Inspection.analysis_status == AnalysisStatus.COMPLETED.value,
+            )
+        )
+        or 0
+    )
+
+    by_asset: dict[uuid.UUID, list[Inspection]] = defaultdict(list)
+    for i in insps:
+        by_asset[i.asset_id].append(i)
+
+    healths = [compute_asset_health(a, by_asset.get(a.id, []), thresholds) for a in assets]
+    analyzed = [h for h in healths if h.inspection_count > 0]
+    analyzed.sort(
+        key=lambda h: (
+            risk_rank(h.risk_level),
+            h.months_to_critical if h.months_to_critical is not None else 9_999,
+            h.health_score,
+        )
+    )
+
+    return FleetHealthSummary(
+        generated_at=datetime.now(timezone.utc),
+        critical_threshold_delta=float(thresholds.get("critical_delta", 30)),
+        assets_analyzed=len(analyzed),
+        at_risk_count=sum(1 for h in analyzed if h.risk_level in ("CRITICAL", "WARNING")),
+        worsening_count=sum(1 for h in analyzed if h.trend == "worsening"),
+        total_inspections=total_completed,
+        matched_inspections=len(insps),
+        assets=analyzed,
+    )
+
+
+@router.get("/{asset_id}/health", response_model=AssetHealth)
+async def asset_health(asset_id: uuid.UUID, ctx: OrgContext, db: DbSession) -> AssetHealth:
+    asset = await db.get(Asset, asset_id)
+    if not asset or asset.org_id != ctx.org_id:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Asset not found")
+    thresholds = await _org_thresholds(db, ctx.org_id)
+    insps = (
+        await db.execute(
+            select(Inspection).where(
+                Inspection.asset_id == asset_id,
+                Inspection.analysis_status == AnalysisStatus.COMPLETED.value,
+            )
+        )
+    ).scalars().all()
+    return compute_asset_health(asset, list(insps), thresholds)
 
 
 @router.post("", response_model=AssetOut, status_code=status.HTTP_201_CREATED)

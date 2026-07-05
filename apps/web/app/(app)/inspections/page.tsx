@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 import type { Inspection } from "@/lib/types";
-import { faultBadgeClass, formatDate } from "@/lib/utils";
+import { faultBadgeClass, formatDay } from "@/lib/utils";
 
 const FILTERS = ["", "CRITICAL", "WARNING", "NORMAL"];
 
@@ -74,7 +74,7 @@ export default function InspectionsPage() {
                     {i.analysis_status === "failed" ? "FAILED" : i.fault_level || "—"}
                   </span>
                 </td>
-                <td className="px-4 py-2.5 text-gray-500">{formatDate(i.created_at)}</td>
+                <td className="px-4 py-2.5 text-gray-500">{formatDay(i.captured_at ?? i.created_at)}</td>
               </tr>
             ))}
           </tbody>

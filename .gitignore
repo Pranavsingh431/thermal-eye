@@ -10,8 +10,9 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+# NOTE: the bare `lib/` / `lib64/` Python patterns were removed — they silently
+# excluded the Next.js `apps/web/lib/` source dir (auth/api/types/utils), which
+# broke the frontend build. Scope any future Python artifact ignore precisely.
 parts/
 sdist/
 var/
@@ -59,6 +60,10 @@ apps/web/out/
 apps/web/build/
 .vercel/
 next-env.d.ts
+*.tsbuildinfo
+
+# Local, machine-specific Claude Code settings
+.claude/settings.local.json
 
 # Python packaging (apps/api)
 apps/api/.venv/
@@ -119,7 +124,7 @@ Thumbs.db
 temp/
 tmp/
 
-# Images (except sample/demo images)
+# Images (except sample/demo images and committed app assets)
 *.jpg
 *.jpeg
 *.png
@@ -128,6 +133,9 @@ tmp/
 *.tiff
 !demo_images/
 !docs/images/
+# Front-end static assets (logos, brand marks) must be committed for the build.
+!apps/web/public/
+!apps/web/public/**
 
 # PDFs (generated reports)
 *.pdf

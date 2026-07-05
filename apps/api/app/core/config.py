@@ -43,6 +43,10 @@ class Settings(BaseSettings):
     openrouter_app_url: str = "https://thermaleye.app"
     openrouter_app_title: str = "ThermalEye"
 
+    # --- Public URL of this API (used to build absolute file URLs when serving
+    #     files from local disk in dev; prod uses Supabase absolute signed URLs). ---
+    public_api_url: str = "http://localhost:8000"
+
     # --- Supabase Storage ---
     supabase_url: str = ""
     supabase_service_role_key: str = ""

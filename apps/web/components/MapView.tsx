@@ -1,9 +1,21 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { CircleMarker, MapContainer, Polyline, Popup, TileLayer } from "react-leaflet";
+import {
+  CircleMarker,
+  LayerGroup,
+  LayersControl,
+  MapContainer,
+  Polyline,
+  Popup,
+  TileLayer,
+} from "react-leaflet";
 import type { Asset, Inspection } from "@/lib/types";
 import { faultColor } from "@/lib/utils";
+
+const ESRI_IMAGERY = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
+const ESRI_LABELS = "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}";
+const ESRI_ATTR = "Tiles © Esri — Source: Esri, Maxar, Earthstar Geographics";
 
 interface Props {
   center: [number, number];
@@ -15,10 +27,23 @@ interface Props {
 export default function MapView({ center, zoom, assets, inspections }: Props) {
   return (
     <MapContainer center={center} zoom={zoom} className="h-full w-full" scrollWheelZoom>
-      <TileLayer
-        attribution='&copy; OpenStreetMap contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
+      <LayersControl position="topright">
+        <LayersControl.BaseLayer checked name="Satellite + labels">
+          <LayerGroup>
+            <TileLayer attribution={ESRI_ATTR} url={ESRI_IMAGERY} maxZoom={19} />
+            <TileLayer url={ESRI_LABELS} maxZoom={19} />
+          </LayerGroup>
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Satellite">
+          <TileLayer attribution={ESRI_ATTR} url={ESRI_IMAGERY} maxZoom={19} />
+        </LayersControl.BaseLayer>
+        <LayersControl.BaseLayer name="Streets">
+          <TileLayer
+            attribution="&copy; OpenStreetMap contributors"
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+        </LayersControl.BaseLayer>
+      </LayersControl>
 
       {assets.map((a) => {
         if (a.geometry && a.geometry.type === "LineString") {

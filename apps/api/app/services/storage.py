@@ -65,8 +65,11 @@ async def get_signed_url(path: str | None, expires_in: int = 3600) -> str | None
         except Exception as exc:  # noqa: BLE001
             logger.warning("signed_url_failed", path=path, error=str(exc))
         return None
-    # Dev: served by the API's static mount (see main.py).
-    return f"/files/{path}"
+    # Dev: served by the API's static mount (see main.py). Return an ABSOLUTE URL
+    # so the browser (served from the web origin) resolves it against the API,
+    # not the front-end origin.
+    base = settings.public_api_url.rstrip("/")
+    return f"{base}/files/{path}"
 
 
 async def delete(path: str | None) -> None:

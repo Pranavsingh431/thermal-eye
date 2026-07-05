@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from PIL import Image
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,9 +27,11 @@ from app.schemas.inspection import (
     DashboardStats,
     InspectionDetail,
     InspectionOut,
+    TrendPoint,
+    TrendResponse,
     UploadResult,
 )
-from app.services import storage
+from app.services import storage, weather
 from app.services.alerts import maybe_send_alert
 from app.services.analysis import AnalysisResult, analyze_thermal_image
 from app.services.audit import record_audit
@@ -88,19 +90,38 @@ async def _process_image(
     content_type: str,
     data: bytes,
     sem: asyncio.Semaphore,
+    manual_captured_at: datetime | None = None,
 ) -> _Processed:
     inspection_id = uuid.uuid4()
     prefix = f"{org.id}/inspections/{inspection_id}"
 
     lat, lon = extract_gps(data)
+    # Capture date precedence: explicit override from the upload form > EXIF > none.
+    captured_at = manual_captured_at or _exif_captured_at(data)
     asset, distance = (None, None)
     if lat is not None and lon is not None:
         asset, distance = nearest_asset(assets, lat, lon)
 
-    thresholds = (org.settings or {}).get("thresholds", {})
+    # Thresholds: a per-asset-type profile (e.g. stricter for transformers) wins,
+    # otherwise the org default.
+    org_settings = org.settings or {}
+    profiles = org_settings.get("threshold_profiles") or {}
+    thresholds = (profiles.get(asset.asset_type) if asset else None) or org_settings.get(
+        "thresholds", {}
+    )
+
+    # Enrich ambient from local weather at the capture point/date so ΔT is
+    # available even when the camera didn't overlay an ambient reading.
+    ambient = (
+        await weather.ambient_for(lat, lon, captured_at)
+        if lat is not None and lon is not None
+        else None
+    )
 
     async with sem:
-        analysis = await analyze_thermal_image(data, content_type, thresholds=thresholds)
+        analysis = await analyze_thermal_image(
+            data, content_type, thresholds=thresholds, ambient_temp=ambient
+        )
 
     # Persist original + thumbnail (concurrently).
     ext = "jpg" if "jpeg" in content_type or filename.lower().endswith(("jpg", "jpeg")) else (
@@ -133,7 +154,7 @@ async def _process_image(
         thumbnail_path=thumb_path,
         latitude=lat,
         longitude=lon,
-        captured_at=_exif_captured_at(data),
+        captured_at=captured_at,
         asset_id=asset.id if asset else None,
         distance_km=distance,
         analysis=analysis,
@@ -152,14 +173,30 @@ async def _to_out(insp: Inspection) -> InspectionOut:
     return out
 
 
+def _parse_captured_date(value: str | None) -> datetime | None:
+    """Parse a 'YYYY-MM-DD' (or full ISO) capture-date override to noon-UTC that day."""
+    if not value:
+        return None
+    try:
+        if len(value) == 10:  # date only -> anchor at local-ish midday to avoid tz edge flips
+            d = datetime.strptime(value, "%Y-%m-%d")
+            return d.replace(hour=12, tzinfo=timezone.utc)
+        dt = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+    except ValueError:
+        return None
+
+
 @router.post("/upload", response_model=UploadResult, status_code=status.HTTP_201_CREATED)
 async def upload(
     ctx: InspectorCtx,
     db: DbSession,
     files: Annotated[list[UploadFile], File(...)],
+    captured_date: Annotated[str | None, Form()] = None,
 ) -> UploadResult:
     if not files:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "No files provided")
+    manual_captured_at = _parse_captured_date(captured_date)
     if len(files) > _MAX_BATCH:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Max {_MAX_BATCH} images per upload")
 
@@ -196,7 +233,10 @@ async def upload(
 
     sem = asyncio.Semaphore(_VISION_CONCURRENCY)
     processed = await asyncio.gather(
-        *(_process_image(org, assets, name, ctype, data, sem) for name, ctype, data in payloads)
+        *(
+            _process_image(org, assets, name, ctype, data, sem, manual_captured_at)
+            for name, ctype, data in payloads
+        )
     )
 
     batch = Batch(org_id=org.id, created_by=ctx.user.id, name=None, total=len(processed))  # type: ignore[attr-defined]
@@ -327,6 +367,67 @@ async def dashboard_stats(ctx: OrgContext, db: DbSession) -> DashboardStats:
         last_24h=last_24h,
         total_assets=total_assets,
     )
+
+
+@router.get("/stats/trend", response_model=TrendResponse)
+async def stats_trend(
+    ctx: OrgContext,
+    db: DbSession,
+    days: int = Query(default=30, ge=7, le=180),
+) -> TrendResponse:
+    """Daily inspection volume + severity mix + average temperature over a window."""
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(days=days)
+    rows = (
+        await db.execute(
+            select(Inspection).where(
+                Inspection.org_id == ctx.org_id,
+                Inspection.analysis_status == AnalysisStatus.COMPLETED.value,
+            )
+        )
+    ).scalars().all()
+
+    buckets: dict[str, dict] = {}
+    for i in range(days, -1, -1):
+        d = (now - timedelta(days=i)).date().isoformat()
+        buckets[d] = {"total": 0, "critical": 0, "warning": 0, "normal": 0, "temps": []}
+
+    max_temp: float | None = None
+    hottest_asset_id = None
+    for r in rows:
+        ts = r.captured_at or r.created_at
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        if ts < since:
+            continue
+        b = buckets.get(ts.date().isoformat())
+        if b is None:
+            continue
+        b["total"] += 1
+        lvl = (r.fault_level or "").upper()
+        if lvl in ("CRITICAL", "WARNING", "NORMAL"):
+            b[lvl.lower()] += 1
+        if r.measured_temp is not None:
+            b["temps"].append(r.measured_temp)
+            if max_temp is None or r.measured_temp > max_temp:
+                max_temp, hottest_asset_id = r.measured_temp, r.asset_id
+
+    points = [
+        TrendPoint(
+            date=d,
+            total=b["total"],
+            critical=b["critical"],
+            warning=b["warning"],
+            normal=b["normal"],
+            avg_temp=round(sum(b["temps"]) / len(b["temps"]), 1) if b["temps"] else None,
+        )
+        for d, b in buckets.items()
+    ]
+    hottest_name = None
+    if hottest_asset_id:
+        a = await db.get(Asset, hottest_asset_id)
+        hottest_name = a.name if a else None
+    return TrendResponse(points=points, max_temp=max_temp, hottest_asset=hottest_name)
 
 
 @router.get("/{inspection_id}", response_model=InspectionDetail)

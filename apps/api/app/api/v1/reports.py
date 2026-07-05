@@ -8,13 +8,16 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
+from sqlalchemy import select
+
 from app.api.deps import DbSession, OrgContext, require_role
-from app.core.enums import Role
+from app.core.enums import AnalysisStatus, Role
 from app.models.asset import Asset
 from app.models.inspection import Inspection
 from app.models.organization import Organization
 from app.services import storage
-from app.services.reports import render_report_html, render_report_pdf
+from app.services.predictive import compute_asset_health
+from app.services.reports import generate_ai_summary, render_report_html, render_report_pdf
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 
@@ -43,7 +46,28 @@ async def generate_inspection_report(
     asset = await db.get(Asset, insp.asset_id) if insp.asset_id else None
     image_url = await storage.get_signed_url(insp.image_path, expires_in=3600)
 
-    html = render_report_html(org, insp, asset, image_url)
+    # Defensive: if the narrative wasn't produced at upload time, generate it now
+    # so the report is never blank.
+    if not (insp.ai_summary or "").strip():
+        insp.ai_summary = await generate_ai_summary(insp, asset, org)
+
+    # Predictive context: if this asset has a worsening trend, surface the forecast.
+    trend_note: str | None = None
+    if asset is not None:
+        thresholds = (org.settings or {}).get("thresholds", {})
+        history = (
+            await db.execute(
+                select(Inspection).where(
+                    Inspection.asset_id == asset.id,
+                    Inspection.analysis_status == AnalysisStatus.COMPLETED.value,
+                )
+            )
+        ).scalars().all()
+        health = compute_asset_health(asset, list(history), thresholds)
+        if health.trend in ("worsening", "improving") and health.slope_c_per_month is not None:
+            trend_note = health.recommendation
+
+    html = render_report_html(org, insp, asset, image_url, trend_note=trend_note)
     pdf = await render_report_pdf(html)
 
     if pdf:

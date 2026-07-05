@@ -6,7 +6,7 @@ import { ArrowLeft, FileText, Trash2, AlertCircle, Loader2 } from "lucide-react"
 import { toast } from "sonner";
 import { api, ApiError } from "@/lib/api";
 import type { InspectionDetail } from "@/lib/types";
-import { faultBadgeClass, formatDate } from "@/lib/utils";
+import { faultBadgeClass, formatDate, formatDay } from "@/lib/utils";
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -66,7 +66,9 @@ export default function InspectionDetailPage() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">{insp.asset_name || insp.original_filename || "Inspection"}</h1>
-          <p className="text-sm text-gray-500">{formatDate(insp.created_at)}</p>
+          <p className="text-sm text-gray-500">
+            Captured {formatDay(insp.captured_at ?? insp.created_at)}
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <span className={`badge px-3 py-1.5 ${faultBadgeClass(insp.fault_level)}`}>
@@ -110,6 +112,8 @@ export default function InspectionDetailPage() {
             <Row label="Confidence" value={insp.confidence != null ? `${Math.round(insp.confidence * 100)}%` : "—"} />
             <Row label="Location" value={insp.latitude != null ? `${insp.latitude.toFixed(5)}, ${insp.longitude?.toFixed(5)}` : "—"} />
             <Row label="Matched asset" value={insp.asset_name || "Unmatched"} />
+            <Row label="Captured" value={formatDay(insp.captured_at ?? insp.created_at)} />
+            <Row label="Uploaded" value={formatDate(insp.created_at)} />
           </div>
 
           {insp.ai_summary && (

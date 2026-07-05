@@ -71,3 +71,18 @@ class DashboardStats(BaseModel):
     avg_delta_t: float | None
     last_24h: int
     total_assets: int
+
+
+class TrendPoint(BaseModel):
+    date: str  # YYYY-MM-DD
+    total: int
+    critical: int
+    warning: int
+    normal: int
+    avg_temp: float | None
+
+
+class TrendResponse(BaseModel):
+    points: list[TrendPoint]
+    max_temp: float | None
+    hottest_asset: str | None

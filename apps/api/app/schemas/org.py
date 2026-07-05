@@ -42,7 +42,10 @@ class ThresholdSettings(BaseModel):
 
 class OrgSettingsUpdate(BaseModel):
     thresholds: ThresholdSettings | None = None
-    units: str | None = None
+    # Per-asset-type overrides, e.g. {"transformer": {...}, "line": {...}}.
+    threshold_profiles: dict[str, ThresholdSettings] | None = None
+    units: str | None = None  # "celsius" | "fahrenheit"
+    emissivity: float | None = Field(default=None, ge=0.1, le=1.0)
     timezone: str | None = None
     alert_recipients: list[EmailStr] | None = None
     alerts_enabled: bool | None = None

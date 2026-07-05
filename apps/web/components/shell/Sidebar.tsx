@@ -3,15 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, UploadCloud, ClipboardList, Map, Network, Settings, X,
+  LayoutDashboard, UploadCloud, ClipboardList, Map, Network, Settings, X, HeartPulse,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/lib/auth";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const nav = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/upload", label: "Upload & Analyze", icon: UploadCloud },
   { href: "/inspections", label: "Inspections", icon: ClipboardList },
+  { href: "/health", label: "Insulator Health", icon: HeartPulse },
   { href: "/map", label: "Map", icon: Map },
   { href: "/assets", label: "Grid / Assets", icon: Network },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -32,15 +34,15 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
       >
         <div className="flex h-16 items-center justify-between px-5">
           <div className="flex items-center gap-2.5 overflow-hidden">
-            {org?.logo_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={org.logo_url} alt="" className="h-8 w-8 rounded-lg object-contain" />
-            ) : (
-              <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-brand text-brand-fg font-bold">
-                {(org?.name || "TE").slice(0, 2).toUpperCase()}
-              </div>
-            )}
-            <span className="truncate font-semibold">{org?.name || "ThermalEye"}</span>
+            <BrandLogo logoUrl={org?.logo_url} className="h-8 w-8 shrink-0" />
+            <span className="flex min-w-0 flex-col leading-tight">
+              <span className="truncate font-semibold">{org?.name || "Thermal Eye"}</span>
+              {org?.logo_url && (
+                <span className="truncate text-[10px] uppercase tracking-wide text-gray-400">
+                  Thermal Eye
+                </span>
+              )}
+            </span>
           </div>
           <button className="lg:hidden" onClick={onClose}><X className="h-5 w-5" /></button>
         </div>
@@ -64,7 +66,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </nav>
 
         <div className="border-t border-gray-200 p-4 text-xs text-gray-400 dark:border-gray-800">
-          ThermalEye v2 · {org?.plan || "pilot"}
+          Thermal Eye · by Evizen AI · {org?.plan || "pilot"}
         </div>
       </aside>
     </>

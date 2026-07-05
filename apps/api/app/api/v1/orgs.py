@@ -6,10 +6,13 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from typing import Annotated as _Annotated
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from app.api.deps import DbSession, OrgContext, require_role
+from app.core.config import settings
 from app.core.enums import Role
 from app.core.security import generate_opaque_token, hash_opaque_token, hash_password
 from app.models.organization import Organization
@@ -23,6 +26,7 @@ from app.schemas.org import (
     OrgSettingsUpdate,
 )
 from app.schemas.user import MemberOut
+from app.services import storage
 from app.services.audit import record_audit
 from app.services.email import send_email
 
@@ -54,6 +58,37 @@ async def update_branding(
         setattr(org, field, value)
     await record_audit(
         db, action="org.branding_update", user_id=ctx.user.id, org_id=org.id,  # type: ignore[attr-defined]
+        resource="organization",
+    )
+    await db.commit()
+    await db.refresh(org)
+    return OrgOut.model_validate(org)
+
+
+_LOGO_TYPES = {"image/png", "image/jpeg", "image/webp", "image/svg+xml"}
+_LOGO_EXT = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/svg+xml": "svg"}
+
+
+@router.post("/current/logo", response_model=OrgOut)
+async def upload_logo(
+    ctx: AdminCtx, db: DbSession, file: _Annotated[UploadFile, File(...)]
+) -> OrgOut:
+    """Upload the org's own logo (replaces the default Thermal Eye mark in the UI)."""
+    ctype = file.content_type or "image/png"
+    if ctype not in _LOGO_TYPES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Logo must be PNG, JPG, WebP or SVG")
+    data = await file.read()
+    if len(data) > 2 * 1024 * 1024:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Logo must be under 2 MB")
+
+    org = await _get_org(db, ctx.org_id)  # type: ignore[attr-defined]
+    ext = _LOGO_EXT.get(ctype, "png")
+    path = f"{org.id}/branding/logo.{ext}"
+    await storage.save_bytes(path, data, ctype)
+    # Long-lived URL: local storage -> stable /files URL; Supabase -> 10y signed URL.
+    org.logo_url = await storage.get_signed_url(path, expires_in=10 * 365 * 24 * 3600)
+    await record_audit(
+        db, action="org.logo_upload", user_id=ctx.user.id, org_id=org.id,  # type: ignore[attr-defined]
         resource="organization",
     )
     await db.commit()

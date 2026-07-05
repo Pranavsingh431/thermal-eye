@@ -139,8 +139,10 @@ async def analyze_thermal_image(
             failure_reason="Model reported readable but returned no temperature value.",
         )
 
+    # Prefer an ambient printed on the image; otherwise use the supplied value
+    # (e.g. weather-derived from GPS + capture date) so ΔT can still be computed.
     detected_ambient = _to_celsius(raw.get("ambient_temp"), unit)
-    effective_ambient = ambient_temp if ambient_temp is not None else detected_ambient
+    effective_ambient = detected_ambient if detected_ambient is not None else ambient_temp
 
     fault_level, priority, delta_t, threshold_used = classify(
         measured, effective_ambient, thresholds

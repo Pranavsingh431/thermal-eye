@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Menu, ChevronDown, LogOut, Check } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export function TopBar({ onMenu }: { onMenu: () => void }) {
   const { me, org, logout, switchOrg } = useAuth();
@@ -15,7 +16,9 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
         {org ? `${org.name} · ${me?.active_role}` : ""}
       </div>
 
-      <div className="relative ml-auto">
+      <div className="ml-auto flex items-center gap-2">
+        <ThemeToggle />
+      <div className="relative">
         <button onClick={() => setOpen(!open)}
           className="flex items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 text-sm hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800">
           <div className="grid h-7 w-7 place-items-center rounded-full bg-brand text-xs font-bold text-brand-fg">
@@ -48,6 +51,7 @@ export function TopBar({ onMenu }: { onMenu: () => void }) {
             </div>
           </>
         )}
+      </div>
       </div>
     </header>
   );
